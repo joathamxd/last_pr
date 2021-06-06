@@ -1,7 +1,9 @@
 from json import loads, dumps
-from error import ERROR_READING_TWEET, ERROR_TRANSLATING_TWEET
+from hello_world.tweet_evaluator.error import ERROR_READING_TWEET
 from datetime import datetime
-from googletrans import Translator
+from pandas import DataFrame
+from tweet_evaluator import Process
+
 
 # import requests
 TEAM_NAME = "Los merequetengues"
@@ -14,6 +16,11 @@ def get_origin_data(body):
         return tweet
     except Exception as e:
         return ERROR_READING_TWEET
+
+
+def tweet_to_df(tweet):
+    return DataFrame([tweet, ],
+                     columns=['tweet_text'])
 
 
 def lambda_request(probs, tweet_class="POSITIVE", cluster="Random cluster"):
@@ -36,15 +43,6 @@ def lambda_request(probs, tweet_class="POSITIVE", cluster="Random cluster"):
             }
         ),
     }
-
-
-def translate_tweet(tweet):
-    try:
-        translator = Translator()
-        tr = translator.translate(tweet, src="es", dest="en")
-        return tr
-    except Exception as e:
-        return ERROR_TRANSLATING_TWEET
 
 
 def lambda_handler(event, context):
@@ -71,8 +69,10 @@ def lambda_handler(event, context):
 
     body = loads(event["body"])
     tweet = get_origin_data(body)
-    tweet_es = translate_tweet(tweet)
-
+    data = tweet_to_df(tweet)
+    process = Process(data)
+    process.run()
+    process.get_file_words()
 
     test_prob = {
         "proba_positive": 0.056,
@@ -81,6 +81,6 @@ def lambda_handler(event, context):
         "proba_mixed": 0.333,
     }
 
-    return lambda_request(test_prob, cluster=tweet_es)
+    return lambda_request(test_prob, cluster=tweet)
 
 

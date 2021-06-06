@@ -77,7 +77,6 @@ class Process:
                 freq_words[k] = v
         return freq_words
 
-
     @staticmethod
     def count_personal_words(tweet, n, p):
         positive = 0

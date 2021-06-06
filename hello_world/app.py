@@ -3,6 +3,7 @@ from hello_world.tweet_evaluator.error import ERROR_READING_TWEET
 from datetime import datetime
 from pandas import DataFrame
 from tweet_evaluator import Process
+from pickle import load
 
 
 # import requests
@@ -23,7 +24,20 @@ def tweet_to_df(tweet):
                      columns=['tweet_text'])
 
 
-def lambda_request(probs, tweet_class="POSITIVE", cluster="Random cluster"):
+def evaluate_trained_model(data):
+    model = load(open("../hello_world/data/models/los_merequetengues.pk", 'rb'))
+    predict = model.predict(data)
+    prob = model.predict_proba(data)
+    return {
+        "proba_mixed": prob[0][0],
+        "proba_negative": prob[0][1],
+        "proba_neutral": prob[0][2],
+        "proba_positive": prob[0][3],
+        "class": predict[0],
+    }
+
+
+def lambda_request(probs, cluster="Random cluster"):
     today = datetime.today().strftime('%d/%m/%YT%H:%M:%S')
     return {
         "statusCode": 200,
@@ -37,7 +51,7 @@ def lambda_request(probs, tweet_class="POSITIVE", cluster="Random cluster"):
                     "proba_negative": float(probs["proba_negative"]),
                     "proba_neutral": float(probs["proba_neutral"]),
                     "proba_mixed": float(probs["proba_mixed"]),
-                    "class": tweet_class,
+                    "class": probs["class"],
                     "cluster": cluster,
                 },
             }
@@ -72,15 +86,16 @@ def lambda_handler(event, context):
     data = tweet_to_df(tweet)
     process = Process(data)
     process.run()
-    process.get_file_words()
+    features = [
+        'tweet_mensaje',
+        'n_emojis', 'n_lower', 'n_upper',
+        'n_digit', 'n_whitespaces', 'n_words', 'has_tags', 'has_hashtag',
+        'has_urls', 'n_exclamation', 'n_question', 'n_hashtag', 'n_tags',
+        'n_urls', 'count_personal_positive',
+        'count_personal_negative'
+    ]
+    prob = evaluate_trained_model(process.data[features])
 
-    test_prob = {
-        "proba_positive": 0.056,
-        "proba_negative": 0.532,
-        "proba_neutral": 0.102,
-        "proba_mixed": 0.333,
-    }
-
-    return lambda_request(test_prob, cluster=tweet)
+    return lambda_request(prob, cluster=tweet)
 
 

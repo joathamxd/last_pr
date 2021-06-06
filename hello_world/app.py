@@ -1,9 +1,10 @@
 from json import loads, dumps
-from hello_world.tweet_evaluator.error import ERROR_READING_TWEET
+from tweet_evaluator.error import ERROR_READING_TWEET
 from datetime import datetime
 from pandas import DataFrame
 from tweet_evaluator import Process
 from pickle import load
+from numpy import around
 
 
 # import requests
@@ -11,6 +12,7 @@ TEAM_NAME = "Los merequetengues"
 
 
 def get_origin_data(body):
+    print("Reading tweet from request")
     try:
         tweet = body["tweet_text"]
         assert isinstance(tweet, str)
@@ -20,12 +22,14 @@ def get_origin_data(body):
 
 
 def tweet_to_df(tweet):
+    print("Converting Tweet to DF")
     return DataFrame([tweet, ],
                      columns=['tweet_text'])
 
 
 def evaluate_trained_model(data):
-    model = load(open("../hello_world/data/models/los_merequetengues.pk", 'rb'))
+    print("Reading pickle model and evaluating")
+    model = load(open("data/models/los_merequetengues.pk", 'rb'))
     predict = model.predict(data)
     prob = model.predict_proba(data)
     return {
@@ -38,6 +42,19 @@ def evaluate_trained_model(data):
 
 
 def lambda_request(probs, cluster="Random cluster"):
+    print("Requesting data")
+    print("Probabilities: ",
+          float(probs["proba_positive"]),
+          float(probs["proba_negative"]),
+          float(probs["proba_neutral"]),
+          float(probs["proba_mixed"]))
+    print("Probabilities rounded: ",
+          around(float(probs["proba_positive"]), decimals=10),
+          around(float(probs["proba_negative"]), decimals=10),
+          around(float(probs["proba_neutral"]), decimals=10),
+          around(float(probs["proba_mixed"]), decimals=10)
+          )
+
     today = datetime.today().strftime('%d/%m/%YT%H:%M:%S')
     return {
         "statusCode": 200,
@@ -47,10 +64,10 @@ def lambda_request(probs, cluster="Random cluster"):
                 "data": {
                     "timestamp": str(today),
                     "team_name": TEAM_NAME,
-                    "proba_positive": float(probs["proba_positive"]),
-                    "proba_negative": float(probs["proba_negative"]),
-                    "proba_neutral": float(probs["proba_neutral"]),
-                    "proba_mixed": float(probs["proba_mixed"]),
+                    "proba_positive": around(probs["proba_positive"], decimals=10),
+                    "proba_negative": around(probs["proba_negative"], decimals=10),
+                    "proba_neutral": around(probs["proba_neutral"], decimals=10),
+                    "proba_mixed": around(probs["proba_mixed"], decimals=10),
                     "class": probs["class"],
                     "cluster": cluster,
                 },
@@ -84,7 +101,8 @@ def lambda_handler(event, context):
     body = loads(event["body"])
     tweet = get_origin_data(body)
     data = tweet_to_df(tweet)
-    process = Process(data)
+    process = Process(data, "")
+
     process.run()
     features = [
         'tweet_mensaje',

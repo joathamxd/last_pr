@@ -2,7 +2,7 @@ import re
 from pandas import read_csv, Series
 from emoji import emoji_count
 from text_unidecode import unidecode
-from wordcloud import WordCloud
+# from wordcloud import WordCloud
 
 
 class Process:
@@ -13,6 +13,7 @@ class Process:
         self.directory = directory
 
     def run(self, ):
+        print("Starting process")
         self.data = self.process_before_clean()
         neg, pos = self.get_pos_neg_words()
 
@@ -21,6 +22,7 @@ class Process:
             lambda x: Series(self.count_personal_words(x, neg, pos)))
 
     def process_before_clean(self):
+        print("Process previous clean text")
         self.data["tweet_mensaje"] = self.data[self.TWEET_COL].str.len()
         self.data["n_emojis"] = self.data[self.TWEET_COL].map(emoji_count)
         self.data["n_lower"] = self.data[self.TWEET_COL].map(lambda x: sum(map(str.islower, x)))
@@ -47,6 +49,7 @@ class Process:
         return text.lower()
 
     def get_pos_neg_words(self):
+        print("Evaluating negative words")
         word_column = 'word'
         neg = read_csv(self.directory + "data/neg.csv", header=None)
         neg.columns = [word_column, ]
@@ -69,16 +72,17 @@ class Process:
             tokens = val.split(" ")
             comment_words += " ".join(tokens) + " "
 
-        wc = WordCloud(
-            stopwords=stopwords).generate(comment_words)
-
-        for k, v in wc.words_.items():
-            if v > 0.1:
-                freq_words[k] = v
+        # wc = WordCloud(
+        #     stopwords=stopwords).generate(comment_words)
+        #
+        # for k, v in wc.words_.items():
+        #     if v > 0.1:
+        #         freq_words[k] = v
         return freq_words
 
     @staticmethod
     def count_personal_words(tweet, n, p):
+        print("Counting negative and positive words")
         positive = 0
         negative = 0
         tweet_list = tweet.split(' ')

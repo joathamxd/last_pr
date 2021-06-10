@@ -82,7 +82,7 @@ class Process:
 
     @staticmethod
     def count_personal_words(tweet, n, p):
-        print("Counting negative and positive words")
+        #print("Counting negative and positive words")
         positive = 0
         negative = 0
         tweet_list = tweet.split(' ')

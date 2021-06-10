@@ -29,32 +29,38 @@ def tweet_to_df(tweet):
 
 def evaluate_trained_model(data):
     print("Reading pickle model and evaluating")
+    min_max = load(open('data/models/los_merequetengues_mixman.pk', 'rb'))
     model = load(open("data/models/los_merequetengues.pk", 'rb'))
-    predict = model.predict(data)
-    prob = model.predict_proba(data)
+    model_cluster = load(open("data/models/los_merequetenguesC.pk", 'rb'))
+
+    scaled = min_max.transform(data)
+    predict = model.predict(scaled)
+    prob = model.predict_proba(scaled)
+    cluster = model_cluster.predict(scaled)
+
     return {
         "proba_mixed": prob[0][0],
         "proba_negative": prob[0][1],
         "proba_neutral": prob[0][2],
         "proba_positive": prob[0][3],
         "class": predict[0],
+        "cluster": convert_cluster(cluster[0])
     }
 
 
-def lambda_request(probs, cluster="Random cluster"):
-    print("Requesting data")
-    print("Probabilities: ",
-          float(probs["proba_positive"]),
-          float(probs["proba_negative"]),
-          float(probs["proba_neutral"]),
-          float(probs["proba_mixed"]))
-    print("Probabilities rounded: ",
-          around(float(probs["proba_positive"]), decimals=10),
-          around(float(probs["proba_negative"]), decimals=10),
-          around(float(probs["proba_neutral"]), decimals=10),
-          around(float(probs["proba_mixed"]), decimals=10)
-          )
+def convert_cluster(cluster):
+    if cluster == 0:
+        return "Los apasionados"
+    if cluster == 1:
+        return "Los que Responden"
+    if cluster == 2:
+        return "Las Reacciones"
+    if cluster == 3:
+        return "Los Analistas"
 
+
+def lambda_request(probs):
+    print("Requesting data")
     today = datetime.today().strftime('%d/%m/%YT%H:%M:%S')
     return {
         "statusCode": 200,
@@ -69,7 +75,7 @@ def lambda_request(probs, cluster="Random cluster"):
                     "proba_neutral": around(probs["proba_neutral"], decimals=10),
                     "proba_mixed": around(probs["proba_mixed"], decimals=10),
                     "class": probs["class"],
-                    "cluster": cluster,
+                    "cluster": str(probs["cluster"]),
                 },
             }
         ),
@@ -114,6 +120,6 @@ def lambda_handler(event, context):
     ]
     prob = evaluate_trained_model(process.data[features])
 
-    return lambda_request(prob, cluster=tweet)
+    return lambda_request(prob)
 
 
